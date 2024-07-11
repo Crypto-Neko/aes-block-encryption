@@ -42,19 +42,29 @@ static const uint32_t Rcon[11] = {
 uint32_t RotWord(uint32_t word);
 uint32_t SubWord(uint32_t word);
 void KeyExpansion(uint8_t *key, uint32_t *w);
+void SubBytes(uint8_t state[Nb][Nb]);
+void ShiftRows(uint8_t state[Nb][Nb]);
+uint8_t xtime(uint8_t x);
+void MixColumns(uint8_t state[Nb][Nb]);
+void AddRoundKey(uint8_t state[Nb][Nb], uint32_t *w, int round);
+void AES_encrypt(uint8_t *input, uint8_t *output, uint32_t *w);
+int main();
 
 
+// Apply rotation to a word
 uint32_t RotWord(uint32_t word) {
 	return (word << 8) | (word >> 24);
 }
 
 
+// Apply substitution to a word
 uint32_t SubWord(uint32_t word) {
 	return (sbox[(word >> 24) & 0xFF] << 24) | (sbox[(word >> 16) & 0xFF] << 16) | 
 	       (sbox[(word >> 8) & 0xFF] << 8) | (sbox[(word & 0xFF)]);
 }
 
 
+// Exapnd the initial key
 void keyExpansion(uint8_t *key, uint32_t *w) {
 	uint32_t temp;
 	int i = 0;
@@ -73,4 +83,40 @@ void keyExpansion(uint8_t *key, uint32_t *w) {
 		w[i] = w[i - Nk] ^ temp;
 		i++;
 	}
+}
+
+
+// Substitute the bytes of the current state from the sbox
+void SubBytes(uint8_t state[Nb][Nb]) {
+	for (int i = 0; i < Nb; i++) {
+		for (int j = 0; j < Nb; j++) {
+			state[i][j] = sbox[state[i][j]];
+		}
+	}
+}
+
+
+// Shift the rows of the current state
+void ShiftRows(uint8_t state[Nb][Nb]) {
+	uint8_t temp[Nb];
+
+	for (int i = 0; i < Nb; i++) {
+		for (int j = 0; j < Nb; j++) {
+			temp[j] = state[i][(j + 1) % Nb];
+		}
+		for (int j = 0; j < Nb; j++) {
+			state[i][j] = temp[j];
+		}
+	}
+}
+
+
+// Xtime function to multiply by 2
+uint8_t xtime(uint8_t x) {
+    return ((x << 1) & 0xFF) ^ (((x >> 7) & 1) * 0x1b);
+}
+
+
+int main() {
+	return 0;
 }
