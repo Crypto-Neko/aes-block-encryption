@@ -117,17 +117,28 @@ uint8_t xtime(uint8_t x) {
 
 // Tranform the columns of the state
 void MixColumns(uint8_t state[Nb][Nb]) {
-	uint8_t temp[Nb], t;
-	for (int i = 0; i < Nb; i++) {
-		for (int j = 0; j < Nb; j++) {
-        		temp[j] = state[j][i];
-		}
-		for (int j = 0; j < Nb; j++) {
-			state[j][i] = xtime(tmp[j]);
-			for (int k = 1 ; k < Nb; k++) {
-				state[j][i] ^= xtime(temp[(j + k) % Nb]);
-			}
+    	uint8_t tmp[Nb], t;
+    	for (int i = 0; i < Nb; i++) {
+        	for (int j = 0; j < Nb; j++) {
+            		tmp[j] = state[j][i];
+        	}
+        	for (int j = 0; j < Nb; j++) {
+            		t = tmp[j];
+            		state[j][i] = xtime(tmp[j]) ^ (xtime(tmp[(j + 1) % Nb]) ^ tmp[(j + 1) % Nb]) ^ tmp[(j + 2) % Nb] ^ tmp[(j + 3) % Nb];
 		}
 	}
 }
 
+
+//  Combine the state with the round key as a part of the encryption.
+void AddRoundKey(uint8_t state[Nb][Nb], uint32_t *w, int round) {
+    	for (int i = 0; i < Nb; i++) {
+        	uint32_t k = w[round * Nb + i];
+        	for (int j = 0; j < Nb; j++) {
+            		state[j][i] ^= (k >> (24 - j * 8)) & 0xFF;
+        	}
+    	}
+}
+
+
+void AES_encrypt(uint8_t *input, uint8_t *output, uint32_t *w) {}
