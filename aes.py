@@ -59,6 +59,14 @@ class AES:
         s_box_inv = np.array(s_box_inv).reshape((16, 16))
         return s_box_inv
 
+    # Get the round constants necessary for the algorithm
+    def get_rcon(self):
+        rcon = [
+            0x00000000, 0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000, 0x20000000, 0x40000000,
+            0x80000000, 0x1b000000, 0x36000000
+        ]
+        return rcon
+
     # Generate the key randomly in a secure manner using urandom
     def gen_key(self, key_size=256):
         key = urandom(32)
@@ -84,7 +92,13 @@ class AES:
 
     # Invert substitution
     def inv_sub_bytes(self, state):
-        pass
+        # Define the function to find the right value in the inverse s_box and substitute, then apply to state
+        inv_sub_function = lambda x : self.s_box_inv[x // 16, x % 16]
+        vector_function = np.vectorize(inv_sub_function)
+        result = vector_function(state)
+        
+        # Return the result of the substitution
+        return result
 
     # Shift rows
     def shift_rows(self, state):
