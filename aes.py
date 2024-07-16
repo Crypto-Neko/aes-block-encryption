@@ -10,7 +10,8 @@ class AES:
 
     def __init__(self, key_size):
         self.s_box = self.get_s_box()
-        self.s_box_int = self.get_s_box_inv()
+        self.inv_s_box = self.get_s_box_inv()
+        self.rcon = self.get_rcon()
         self.key = self.gen_key()
 
     # Get the s_box as defined for AES
@@ -76,10 +77,6 @@ class AES:
     def expand_key(self):
         pass
 
-    # Apply the roundkey
-    def apply_roundkey(self, state):
-        pass
-
     # Apply substitution
     def sub_bytes(self, state):
         # Define the function to find the right value in the s_box and substitute, then apply to state
@@ -128,6 +125,10 @@ class AES:
 
     # Invert column mixing
     def inv_mix_columns(self, state):
+        pass
+
+    # Apply the roundkey
+    def apply_roundkey(self, state):
         pass
 
     # Encrypt data with AES
