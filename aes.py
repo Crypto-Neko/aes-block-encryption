@@ -6,13 +6,20 @@ class AES:
     key_size = 256
     Nb = 4
     Nr = 14
-    Nk = Nb * (Nr + 1)
 
     def __init__(self, key_size):
+        # Cryptographic constants
+        self.key_size = 256
+        self.Nb = 4
+        self.Nr = 14
+        self.Nk = 8
+
+        # Set up algorithm
         self.s_box = self.get_s_box()
         self.inv_s_box = self.get_s_box_inv()
         self.rcon = self.get_rcon()
         self.key = self.gen_key()
+        self.roundkeys = self.expand_key()
 
     # Get the s_box as defined for AES
     def get_s_box(self):
@@ -70,12 +77,36 @@ class AES:
 
     # Generate the key randomly in a secure manner using urandom
     def gen_key(self, key_size=256):
-        key = urandom(32)
+        key = os.urandom(32)
         return key.hex()
-        
+    
+    # Rotate a word for use in the key expansion
+    def rotate_word(self, word):
+        return word[1:] + word[:1]
+
+    # Substitute a word for use in the key expansion
+    def sub_word(self, word):
+        return [self.s_box[b // 16, b % 16] for b in word]
+
     # Generate roundkeys from the key
     def expand_key(self):
-        pass
+        symbols = [self.key[i] for i in range(len(self.key))]
+        schedule = [[]] * self.Nb * (self.Nr + 1)
+
+        for i in range(self.Nk):
+            key_schedule[i] = symbols[4*i:4*(i+1)]
+
+        for i in range(self.Nk, self.Nb * (self.Nr + 1)):
+            current_key = schedule[i-1]
+            if i % self.Nk == 0:
+                current_key = sub_word(rotate_word(current_key))
+                current_key[0] ^= self.rcon[i // self.Nk]
+            elif i % self.Nk == 4:
+                current_key = sub_word(current_key)
+
+            schedule[i] = [a ^ b for a, b in zip(key_schedule[i - self.Nk], current_key)]
+
+        return schedule
 
     # Apply substitution
     def sub_bytes(self, state):
@@ -121,19 +152,43 @@ class AES:
 
     # Mix columns
     def mix_columns(self, state):
-        pass
+        for i in range(4):
+            a = state[:, i]
+            b = np.roll(a, -1)
+            state[:, i] = a ^ b
+        return state
 
     # Invert column mixing
     def inv_mix_columns(self, state):
-        pass
+        for i in range(4):
+            a = state[:, i]
+            b = np.roll(a, 1)
+            state[:, i] = a ^ b
+        return state
 
     # Apply the roundkey
-    def apply_roundkey(self, state):
-        pass
+    def apply_roundkey(self, state, roundkey):
+        state = np.array(state)
+        roundkey = np.array(roundkey)
+        return state ^ roundkey
 
     # Encrypt data with AES
     def aes_encrypt(self, message):
-        pass
+        state = np.array(list(message)).reshape((4, 4))
+        state = self.apply_roundkey(state, self.roundkeys[:4])
+
+        for i in range(1, self.Nr):
+            state = self.sub_bytes(state)
+            state = self.shift_rows(state)
+            state = self.mix_columns(state)
+            state = self.apply_roundkey(state, self.roundkeys[4*i:4*(i+1)])
+
+        state = self.sub_bytes(state)
+        state = self.shift_rows(state)
+        state = self.add_round_key(state, self.roundkeys[:4])
+
+        ciphertext = state.flatten().tolist()
+        return bytes(ciphertext)
 
     # Decrypt data with AES
     def aes_decrypt(self, message):
