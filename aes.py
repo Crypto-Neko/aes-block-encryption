@@ -77,7 +77,7 @@ class AES:
 
     # Generate the key randomly in a secure manner using urandom
     def gen_key(self, key_size=256):
-        key = os.urandom(32)
+        key = os.urandom(key_size // 8)
         return key.hex()
     
     # Rotate a word for use in the key expansion
@@ -86,25 +86,26 @@ class AES:
 
     # Substitute a word for use in the key expansion
     def sub_word(self, word):
-        return [self.s_box[b // 16, b % 16] for b in word]
+        print(word)
+        return [self.s_box[(b & 0xF0) >> 4, b & 0x0F] for b in word]
 
     # Generate roundkeys from the key
     def expand_key(self):
-        symbols = [self.key[i] for i in range(len(self.key))]
+        symbols = [int(self.key[i:i+2], 16) for i in range(0, len(self.key), 2)]
         schedule = [[]] * self.Nb * (self.Nr + 1)
 
         for i in range(self.Nk):
-            key_schedule[i] = symbols[4*i:4*(i+1)]
+            schedule[i] = symbols[4*i:4*(i+1)]
 
         for i in range(self.Nk, self.Nb * (self.Nr + 1)):
             current_key = schedule[i-1]
             if i % self.Nk == 0:
-                current_key = sub_word(rotate_word(current_key))
+                current_key = self.sub_word(self.rotate_word(current_key))
                 current_key[0] ^= self.rcon[i // self.Nk]
             elif i % self.Nk == 4:
-                current_key = sub_word(current_key)
+                current_key = self.sub_word(current_key)
 
-            schedule[i] = [a ^ b for a, b in zip(key_schedule[i - self.Nk], current_key)]
+            schedule[i] = [a ^ b for a, b in zip(schedule[i - self.Nk], current_key)]
 
         return schedule
 
@@ -175,22 +176,33 @@ class AES:
     # Encrypt data with AES
     def aes_encrypt(self, message):
         state = np.array(list(message)).reshape((4, 4))
-        state = self.apply_roundkey(state, self.roundkeys[:4])
+        state = self.apply_roundkey(state, self.roundkeys[:self.Nb])
 
         for i in range(1, self.Nr):
             state = self.sub_bytes(state)
             state = self.shift_rows(state)
             state = self.mix_columns(state)
-            state = self.apply_roundkey(state, self.roundkeys[4*i:4*(i+1)])
+            state = self.apply_roundkey(state, self.roundkeys[Self.Nb*i:Self.Nb*(i+1)])
 
         state = self.sub_bytes(state)
         state = self.shift_rows(state)
-        state = self.add_round_key(state, self.roundkeys[:4])
+        state = self.add_round_key(state, self.roundkeys[self.Nr * self.Nb:])
 
         ciphertext = state.flatten().tolist()
         return bytes(ciphertext)
 
     # Decrypt data with AES
-    def aes_decrypt(self, message):
-        pass
+    def aes_decrypt(self, ciphertext):
+        state = np.array(list(ciphertext)).reshape((4, 4))
+        state = self.apply_roundkey(state, self.roundkeys[self.Nr * 4])
 
+
+        for i in range(Self.Nr - 1, -1, -1):
+            state = self.inv_shift_rows(state)
+            state = self.inv_sub_bytes(state)
+            state = self.apply_roundkey(state, self.roundkeys[i])
+            if i != 0:
+                state = self.inv_mix_columns(state)
+
+        plaintext = state.flatten().tolist()
+        return bytes(plaintext)
